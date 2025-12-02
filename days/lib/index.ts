@@ -15,8 +15,11 @@ export let inputLines = async function () {
 export let sum = (a: number, b: number) => a + b;
 export let product = (a: number, b: number) => a * b;
 
-export let min = (a: number, b: number) => Math.min(a, b);
-export let max = (a: number, b: number) => Math.max(a, b);
+export let min2 = (a: number, b: number) => Math.min(a, b);
+export let max2 = (a: number, b: number) => Math.max(a, b);
+export let min = (ns: number[]) => ns.reduce(min2);
+export let max = (ns: number[]) => ns.reduce(max2);
+export let avg = (ns: number[]) => ns.reduce(sum, 0) / ns.length;
 
 export let isDigit = (c: string) => c >= "0" && c <= "9";
 

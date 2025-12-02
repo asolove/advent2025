@@ -49,15 +49,70 @@ step.enableDebug("Iteration", (state) => state.next.length > 5); // Debug next t
 
 */
 
+import { avg, max, min } from ".";
+
 let shouldLog: Map<string, boolean> = new Map();
-let shouldTrace: Map<string, boolean> = new Map();
+let shouldTime: Map<string, number[]> = new Map();
 let shouldDebug: Map<string, (state: {}) => boolean> = new Map();
 
 function step<A>(name: string, state: () => {}, cb: () => A): A {
   if (shouldLog.get(name)) console.log(name, state());
   let debug = shouldDebug.get(name)?.(state());
+  let trace = shouldTime.get(name);
 
   if (debug) debugger;
+
+  let start = performance.now();
   let result = cb();
+
+  if (trace) trace.push(performance.now() - start);
   return result;
 }
+
+let showTimes = () =>
+  shouldTime.forEach((times, name) => {
+    console.log(
+      `[PERF] ${name} called ${times.length} times: average ${avg(
+        times
+      ).toFixed(4)}ms (${min(times).toFixed(4)}ms - ${max(times).toFixed(4)}ms)`
+    );
+  });
+
+shouldLog.set("Parse", true);
+// shouldLog.set("Iteration", true);
+shouldTime.set("Iteration", []);
+shouldDebug.set("Iteration", () => true);
+
+// Example usage
+
+let input = [];
+while (input.length < 10000) {
+  input.push(Math.random() * 100000);
+}
+input = input.join(", ");
+
+let problem = step(
+  "Parse",
+  () => ({ input }),
+  () => {
+    return input.split(", ").map((x) => parseInt(x, 10));
+  }
+);
+
+let state = { sum: 0, remaining: problem };
+while (state.remaining.length > 0) {
+  step(
+    "Iteration",
+    () => state,
+    () => {
+      let [item, ...items] = state.remaining;
+      state = {
+        sum: state.sum + item,
+        remaining: items,
+      };
+    }
+  );
+}
+
+console.log(state.sum);
+showTimes();
