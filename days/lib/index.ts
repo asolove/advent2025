@@ -91,3 +91,7 @@ export function union<A>(s1: Set<A>, s2: Set<A>): Set<A> {
 export function isSubset<A>(s1: Set<A>, s2: Set<A>): boolean {
   return [...s1.values()].every((i) => s2.has(i));
 }
+
+export function unique<A>(arr: A[]): A[] {
+  return [...new Set(arr)];
+}
