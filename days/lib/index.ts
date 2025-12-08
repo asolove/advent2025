@@ -95,3 +95,101 @@ export function isSubset<A>(s1: Set<A>, s2: Set<A>): boolean {
 export function unique<A>(arr: A[]): A[] {
   return [...new Set(arr)];
 }
+
+export class UnionFind {
+  parents: number[];
+  size: number;
+  constructor(size: number) {
+    this.size = size;
+    let parents = [];
+    for (let i = 0; i < size; i++) {
+      parents[i] = i;
+    }
+    this.parents = parents;
+  }
+
+  union(a: number, b: number) {
+    let bRoot = this.find(b);
+
+    // TODO: set parents all along the way finding A's parent
+    let aRoot = this.find(a);
+
+    this.parents[a] = bRoot;
+    this.parents[aRoot] = bRoot;
+  }
+
+  find(n: number) {
+    let parent = this.parents[n];
+    if (parent === n) return n;
+    return this.find(parent);
+  }
+}
+
+export class PriorityQueue<A> {
+  items: [number, A][];
+  size: number;
+
+  constructor() {
+    this.items = [];
+    this.size = 0;
+  }
+
+  pop(): A {
+    let topItem = this.items[0];
+    if (!topItem) throw new Error("Empty heap");
+
+    let newTopItem = this.items[this.size - 1];
+    this.items[0] = newTopItem;
+    delete this.items[this.size - 1];
+    this.size--;
+
+    // rotate
+    this.rotateDown(0);
+
+    return topItem[1];
+  }
+
+  push(item: A, priority: number) {
+    this.items[this.size] = [priority, item];
+    this.size++;
+    this.rotateUp(this.size - 1);
+
+    return;
+  }
+
+  rotateDown(index: number) {
+    let parent = this.items[index];
+    let child1Index = index * 2;
+    let child2Index = index * 2 + 1;
+    let child1 = this.items[child1Index];
+    let child2 = this.items[child2Index];
+    if (!child1) return;
+    if (!child2) return this.rotateUp(child1Index);
+
+    let min = Math.min(parent[0], child1[0], child2[0]);
+    if (min === parent[0]) {
+      return;
+    } else if (min === child1[0]) {
+      this.items[index] = child1;
+      this.items[child1Index] = parent;
+      this.rotateDown(child1Index);
+    } else {
+      this.items[index] = child2;
+      this.items[child2Index] = parent;
+      this.rotateDown(child2Index);
+    }
+  }
+  rotateUp(index: number) {
+    if (index === 0) return;
+
+    let child = this.items[index];
+    let parentIndex = Math.floor(index / 2);
+    let parent = this.items[parentIndex];
+
+    if (parent[0] < child[0]) return;
+
+    this.items[index] = parent;
+    this.items[parentIndex] = child;
+    this.rotateUp(parentIndex);
+  }
+}
