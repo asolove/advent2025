@@ -193,3 +193,18 @@ export class PriorityQueue<A> {
     this.rotateUp(parentIndex);
   }
 }
+
+export const toBits = (bools: boolean[]): number =>
+  bools.reduce(
+    (total, bool, index) => total + (!bool ? 0 : Math.pow(2, index)),
+    0
+  );
+
+export const fromBits = (n: number, len: number): boolean[] => {
+  let r = Array(len).fill(false);
+  for (let i = 0; i < len; i++) {
+    r[i] = n % 2 === 1;
+    n >>= 1;
+  }
+  return r;
+};

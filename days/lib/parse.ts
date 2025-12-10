@@ -65,6 +65,7 @@ export function char<A extends string>(ch: A): Parser<A> {
     return s === ch;
   }) as Parser<A>; // FIXME: can we thread the type assertion through sat and bind?
 }
+export const dash = sat((x) => x === "-");
 export const digit = sat((x) => x >= "0" && x <= "9");
 export const upper = sat((x) => x >= "A" && x <= "Z");
 export const lower = sat((x) => x >= "a" && x <= "z");
