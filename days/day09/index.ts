@@ -1,4 +1,4 @@
-import { inputLines } from "../lib";
+import { cross, inputLines } from "../lib";
 
 const tiles: [number, number][] = (await inputLines()).map(
   (line) => line.split(",").map((n) => parseInt(n, 10)) as [number, number]
@@ -16,11 +16,14 @@ for (let i = 0; i < tiles.length; i++) {
 
 console.log("Part One", max);
 
-let key = (x: number, y: number): string => `${x},${y}`;
-let val = (key: string) =>
-  key.split(",").map((x) => parseInt(x, 10)) as [number, number];
+// Key idea: need to reduce an n^2 area problem into something linear with perimeters.
+// Trace the perimeter of the tiled space.
+//   Track an ordered list per column, e.g. (x=1) => [10, 20, 30, 40];
+//   - Each pair of numbers in the list forms a range of allowed spaces: 10-20, 30-40.
+//  Then test each possible square's perimeter. If every space in the perimeter
+//     falls in an allowed range for its column, the square is allowed.
 
-const border: Map<string, boolean> = new Map();
+const columnIntersections: Map<number, [number, boolean][]> = new Map();
 
 let prevPoint = tiles[tiles.length - 1];
 tiles.forEach((currPoint) => {
@@ -28,87 +31,79 @@ tiles.forEach((currPoint) => {
   let [cx, cy] = currPoint;
 
   if (py === cy) {
-    let step = (cx - px) / Math.abs(cx - px);
-    for (let x = px; x < cx; x += step) {
-      border.set(key(x, cy), true);
+    let goingRight = cx > px;
+    for (let x = Math.min(px, cx); x <= Math.max(px, cx); x++) {
+      let col = columnIntersections.get(x);
+      if (!col) {
+        col = [];
+        columnIntersections.set(x, col);
+      }
+      col.push([cy, goingRight]);
     }
   } else if (px === cx) {
-    let step = (cy - py) / Math.abs(cy - py);
-    for (let y = py; y < cy; y += step) {
-      border.set(key(cx, y), true);
-    }
   } else {
     throw new Error(`Unsure how points connect: ${prevPoint} -> ${currPoint}`);
   }
   prevPoint = currPoint;
 });
 
-let [minX, maxX] = [Infinity, -Infinity];
-let [minY, maxY] = [Infinity, -Infinity];
+let columnRanges = new Map(
+  columnIntersections.entries().map(([col, intersections]) => {
+    let ranges: number[] = [];
+    let currentStart: number = Infinity;
+    let currentEnd: number = -Infinity;
 
-for (const [x, y] of tiles) {
-  if (x < minX) minX = x;
-  if (x > maxX) maxX = x;
+    for (let [y, goingRight] of intersections.toSorted((a, b) => a[0] - b[0])) {
+      if (goingRight) {
+        // New range
+        if (currentEnd !== -Infinity) {
+          ranges.push(currentStart, currentEnd + 1);
+          currentStart = Infinity;
+          currentEnd = -Infinity;
+        }
+        if (currentStart === Infinity) currentStart = y;
+      } else {
+        currentEnd = y;
+      }
+    }
+    ranges.push(currentStart, currentEnd + 1);
 
-  if (y < minY) minY = y;
-  if (y > maxY) maxY = y;
-}
-minX -= 1;
-minY -= 1;
-maxX += 1;
-maxY += 1;
+    return [col, ranges];
+  })
+);
 
-// flood fill
-let queue = [
-  key(minX, minY),
-  key(minX, maxY),
-  key(maxX, minY),
-  key(maxX, maxY),
-];
+let isAllowed = (x: number, y: number): boolean => {
+  let yRanges = columnRanges.get(x);
+  if (!yRanges) throw new Error("No range known for column: " + x);
+  let i = yRanges.findIndex((cy) => cy > y);
+  return i % 2 === 1;
+};
 
-let outside = new Map<string, boolean>();
-
-while (queue.length > 0) {
-  let k = queue.pop() as string;
-  let [x, y] = val(k);
-  if (x < minX || x > maxX || y < minY || y > maxY) continue;
-  if (outside.has(k)) continue;
-  if (border.has(k)) continue;
-
-  outside.set(k, true);
-  queue.push(
-    ...[
-      [x, y - 1],
-      [x, y + 1],
-      [x - 1, y],
-      [x + 1, y],
-    ].map(([x, y]: [number, number]) => key(x, y))
-  );
-}
-
-console.log(outside.size);
-
-let perimeterKeys = (
+let perimeter = (
   x1: number,
-  x2: number,
   y1: number,
+  x2: number,
   y2: number
-): string[] => {
+): [number, number][] => {
+  let r: [number, number][] = [];
+  // FIXME: could avoid listing corners twice
+  r.push(...line(x1, y1, x1, y2));
+  r.push(...line(x1, y2, x2, y2));
+  r.push(...line(x2, y2, x2, y1));
+  r.push(...line(x2, y1, x1, y1));
+  return r;
+};
+
+let line = (
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number
+): [number, number][] => cross(fromTo(x1, x2), fromTo(y1, y2));
+
+let fromTo = (from: number, to: number) => {
   let r = [];
-
-  let xStep = (x2 - x1) / Math.abs(x2 - x1);
-  let yStep = (y2 - y1) / Math.abs(y2 - y1);
-
-  // x1, y1->y2
-  // x2, y1->y2
-  // x1->x2, y1
-  // x1->x2, y2
-
-  let step = (cx - px) / Math.abs(cx - px);
-  for (let x = px; x < cx; x += step) {
-    border.set(key(x, cy), true);
-  }
-
+  for (let i = Math.min(from, to); i <= Math.max(from, to); i++) r.push(i);
   return r;
 };
 
@@ -117,11 +112,15 @@ for (let i = 0; i < tiles.length; i++) {
   let [x1, y1] = tiles[i];
   for (let j = 0; j < i; j++) {
     let [x2, y2] = tiles[j];
-
-    // find if allowed: only after checking area is greater since that's cheap
-    // let p = perimiter(x1, x2, y1, y2);
-    // let allowed = perimeter.
     let area = (Math.abs(y2 - y1) + 1) * (Math.abs(x2 - x1) + 1);
-    if (area > max) max = area;
+
+    if (area <= max) continue;
+
+    let p = perimeter(x1, y1, x2, y2);
+    let inTiles = p.every(([x, y]) => isAllowed(x, y));
+
+    if (inTiles) max = area;
   }
 }
+
+console.log("Part Two", max);
