@@ -68,6 +68,16 @@ export function transpose<A>(items: A[][]): A[][] {
   return r;
 }
 
+export function cross<A, B>(as: A[], bs: B[]): [A, B][] {
+  let r: [A, B][] = [];
+  as.forEach((a) => {
+    bs.forEach((b) => {
+      r.push([a, b]);
+    });
+  });
+  return r;
+}
+
 export function minBy<A>(
   items: IterableIterator<A>,
   key: (i: A) => number
